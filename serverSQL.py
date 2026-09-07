@@ -286,4 +286,3 @@ if __name__ == "__main__":
     sdw.layout.addStretch()
     sdw.show()
     app.exec()
-#I have to add this
