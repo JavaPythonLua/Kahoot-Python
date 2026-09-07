@@ -1,3 +1,4 @@
+#MUST INSTALL PySide6 & Colorlog beforehand using pip
 from PySide6.QtWidgets import QApplication, QWidget, QLabel, QMainWindow, QLineEdit, QVBoxLayout, QPushButton
 from PySide6.QtGui import QPixmap, QFontMetrics
 from PySide6.QtCore import Qt, Signal
@@ -168,7 +169,7 @@ class endingWin(QWidget):
         elif place == 3:
             placeText = "You came in 3rd place"
         else:
-            placeText = "You came in " + str(place) = "th place"
+            placeText = "You came in " + str(place) + "th place"
         placeLabel = QLabel(placeText)
         placeLabel.adjustSize()
         self.layout.addWidget(placeLabel)
@@ -217,7 +218,7 @@ class clientCahoot:
         return place
 
 def answerRecieved(answer):
-
+    pass
 
 
 
