@@ -28,6 +28,10 @@ from PySide6.QtGui import QPixmap, QFontMetrics
 from PySide6.QtCore import Qt, Signal
 import logging
 import sys
+logging.basicConfig(level=logging.INFO)
+logging.info("Kahoot-Python  Copyright (C) 2026  Alex Inns")
+logging.info("This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.")
+logging.info("This is free software, and you are welcome to redistribute it under certain conditions; type `show c' for details.")
 
 #Stores of Data:
 #HandleSockets.playersConns:dictionary Stores each client's conn under their client number
