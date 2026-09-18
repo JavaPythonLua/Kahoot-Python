@@ -41,7 +41,10 @@ handler.setFormatter(
 logger = colorlog.getLogger()
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
-logging.basicConfig(level=logging.DEBUG,stream=sys.stdout)
+logging.basicConfig(level=logging.INFO,stream=sys.stdout)
+logging.info("<program>  Copyright (C) <year>  <name of author>")
+logging.info("This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.")
+logging.info("This is free software, and you are welcome to redistribute it under certain conditions; type `show c' for details.")
 
 class TitleWin(QWidget):
     detailsInputted = Signal(tuple,object)
