@@ -11,6 +11,7 @@ from PySide6.QtGui import QPixmap, QFontMetrics
 from PySide6.QtCore import Qt, Signal
 import logging
 import sys
+import json
 
 #Stores of Data:
 #HandleSockets.playersConns:dictionary Stores each client's conn under their client number
@@ -145,6 +146,8 @@ def stopAcceptingClients(stop_accepting):
 
 class serverDetailsWin(QWidget):
     packfileInputted = Signal(object)
+    QuizChosen = Signal(object)
+    ReadyForClients = Signal(int,int)
     def __init__(self,detailsWinWidth,detailsWinHeight):
         super().__init__()
         self.packfilePath = None
@@ -153,6 +156,7 @@ class serverDetailsWin(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(5)
         self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 
     def addTitle(self,file):
         label = QLabel()
@@ -184,6 +188,68 @@ class serverDetailsWin(QWidget):
                 packFilePath = packFilePath.strip()[:-3]
             self.packfilePath = packFilePath
             self.packfileInputted.emit(self)
+
+    def showQuizesInPack(self,Quizzes):
+        rounds = 1
+        Subhead = QLabel("Quizzes in this pack:")
+        Subhead.adjustSize()
+        self.layout.addWidget(Subhead, alignment=Qt.AlignHCenter)
+        self.NoQuizzes = len(Quizzes)
+        self.Quizzes = Quizzes
+        for quiz in Quizzes:
+            NoQs = quiz[1]
+            QuizName = quiz[0]
+            QuizNameLabel = QLabel(str(rounds) + ". " + str(QuizName))
+            QuizNameLabel.adjustSize()
+            self.layout.addWidget(QuizNameLabel,alignment=Qt.AlignHCenter)
+            rounds += 1
+        SelectLbl = QLabel("Select Quiz Number:")
+        SelectLbl.adjustSize()
+        self.QuizNoField = QLineEdit()
+        self.QuizNoField.setFixedSize(50, 30)
+        SelectQuizBtn = QPushButton("Go!")
+        SelectQuizBtn.adjustSize()
+        self.layout.addWidget(SelectLbl,alignment=Qt.AlignHCenter)
+        self.layout.addWidget(self.QuizNoField,alignment=Qt.AlignHCenter)
+        self.layout.addWidget(SelectQuizBtn,alignment=Qt.AlignHCenter)
+        SelectQuizBtn.clicked.connect(lambda: self.onQuizNoChosen())
+
+    def onQuizNoChosen(self):
+        if not self.QuizNoField.text() is None:
+            self.QuizChosenNo = int(self.QuizNoField.text())
+            self.NoQsInChosen = self.Quizzes[self.QuizChosenNo-1][1]
+            self.QuizChosen.emit(self)
+
+    def WriteDataToFileAndClose(self):
+        file = open("serverDetailsWinData.tmp","w")
+        data = {
+            "PackFilePath": self.packfilePath,
+            "NoQuizzes":self.NoQuizzes,
+            "NoQsInChosen":self.NoQsInChosen,
+            "QuizChosen":self.QuizChosenNo,
+        }
+        json.dump(data, file)
+        file.close()
+        self.close()
+        self.ReadyForClients.emit(700,500)
+
+class clientConnectionsWin(QWidget):
+    def __init__(self,width,height):
+        super().__init__()
+        self.setWindowTitle("Cahoot!")
+        self.resize(width, height)
+        self.layout = QVBoxLayout()
+        serverDetailsFile = open("serverDetailsWinData.tmp","r")
+        serverData = json.load(serverDetailsFile)
+        self.packFilePath = serverData["PackFilePath"]
+        self.NoQuizzes = serverData["NoQuizzes"]
+        self.NoQsInChosen = serverData["NoQsInChosen"]
+        self.QuizChosenNo = serverData["QuizChosen"]
+
+
+
+
+
 
 
 
@@ -267,22 +333,34 @@ def main():
 
 def handlePackFileData():
     hpf.__init__(sdw.packfilePath+".db")
+    NoQuizzes = hpf.fetchNumQuizzes()
+    QuizNames = []
+    for i in range(NoQuizzes):
+        QuizNames.append(hpf.fetchPackDetails(i+1))
+    for i in range(len(QuizNames)):
+        sdw.showQuizesInPack(QuizNames)
+
+
 
 
 if __name__ == "__main__":
     app = QApplication([])
     packfile_queue = queue.Queue()
     global sdw
+    global ccw
     global hpf
     global hc
     global hs
     sdw = serverDetailsWin(700,500)
+    ccw = clientConnectionsWin.__new__(clientConnectionsWin)
     hpf = HandlePackFile.__new__(HandlePackFile)
     hc = handleClients.__new__(handleClients)
     hs = HandleSockets.__new__(HandleSockets)
     sdw.addPackfileFields()
     sdw.addNextStepBtn(packfile_queue)
     sdw.packfileInputted.connect(handlePackFileData)
-    sdw.layout.addStretch()
+    sdw.QuizChosen.connect(sdw.WriteDataToFileAndClose)
+    sdw.ReadyForClients.connect(ccw.__init__)
+    #sdw.layout.addStretch()
     sdw.show()
     app.exec()
