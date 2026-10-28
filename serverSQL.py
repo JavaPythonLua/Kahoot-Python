@@ -20,6 +20,8 @@ import queue
 import select
 import threading
 import pickle
+import argparse
+import logging
 
 
 #Stores of Data:
@@ -30,7 +32,7 @@ import pickle
 
 #NB createNewPlayer takes a tuple as an argument. The tuple must contain these things, in this order (The Client's Nickname, The Client's Addr, The Client's Conn)
 class HandleSockets(socket.socket):
-    def __init__(self,type:socket.SocketKind=socket.AF_INET,protocol:socket.AddressFamily=socket.SOCK_STREAM,enc:str="utf-8"):
+    def __init__(self,type:socket.AddressFamily,protocol:socket.SocketKind,enc:str):
         super().__init__(type,protocol)
         self.enc = enc
         self.bind((socket.gethostbyname(socket.gethostname()),0))
@@ -145,10 +147,41 @@ def stopAcceptingClients(stop_accepting):
 
 
 def main():
+    def address_family(name:str) -> socket.AddressFamily:
+        try:
+            return socket.AddressFamily[name.upper()]
+        except KeyError:
+            raise argparse.ArgumentTypeError(
+                f"Invalid family {name!r}; choose from "
+                f"{', '.join(m.name for m in socket.AddressFamily)}"
+            )
+    def socket_kind(name:str) -> socket.SocketKind:
+        try:
+            return socket.SocketKind[name.upper()]
+        except KeyError:
+            raise argparse.ArgumentTypeError(
+                f"Invalid kind {name!r}; choose from "
+                f"{', '.join(m.name for m in socket.SocketKind)}"
+            )
+    logging.basicConfig(level=logging.WARNING)
+    parser = argparse.ArgumentParser(description="Python connection details")
+    parser.add_argument("--addrFamily",type=address_family,default=socket.AF_INET,help="The address family for the socket")
+    parser.add_argument("--sockKind",type=socket_kind,default=socket.SOCK_STREAM,help="The protocol for the socket")
+    parser.add_argument("--enc",type=str,default="utf-8",help="The encoding for data sent through the socket")
+    args = parser.parse_args()
+    logging.debug(f"socketKind = {args.addrFamily}")
+    logging.debug(f"INET = {socket.AF_INET6}")
+    logging.debug(f"addrFamily = {args.sockKind}")
+    logging.debug(f"Encoding = {args.enc}")
+
     stop_accepting = threading.Event()
     clientDataQueue = Queue()
     clientAnswerQueue = queue.Queue()
-    hpf = HandlePackFile("testPack.db")
+    print("Enter pack file directory:")
+    packFile = input()
+    if packFile[-3] != ".":
+        packFile = packFile + ".db"
+    hpf = HandlePackFile(packFile)
     NoQuizzes = hpf.fetchNumQuizzes()
     QuizNames = []
     for i in range(NoQuizzes):
@@ -161,7 +194,7 @@ def main():
     quizDetails = hpf.fetchPackDetails(ChosenNo)
     NoQs = quizDetails[1]
     hc = handleClients(NoQs)
-    hs = HandleSockets()
+    hs = HandleSockets(args.addrFamily,args.sockKind,args.enc)
     details = hs.returnConnectionDetails()
     HOST = details[0]
     PORT = details[1]
