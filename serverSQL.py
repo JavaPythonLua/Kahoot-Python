@@ -337,8 +337,7 @@ def handlePackFileData():
     QuizNames = []
     for i in range(NoQuizzes):
         QuizNames.append(hpf.fetchPackDetails(i+1))
-    for i in range(len(QuizNames)):
-        sdw.showQuizesInPack(QuizNames)
+    sdw.showQuizesInPack(QuizNames)
 
 
 
