@@ -50,10 +50,10 @@ class HandleSockets(socket.socket):
         conn.send(pickle.dumps(tup))
         conn.close()
 
-    def acceptNewClient(self,endQueue):
+    def acceptNewClient(self):
         conn, addr = self.accept()
         nickname = conn.recv(1024).decode(self.enc)
-        endQueue.put((nickname,addr,conn))
+        return (nickname,addr,conn)
 
 class handleClients():
     def __init__(self,QuesNos:int):
@@ -241,6 +241,7 @@ class serverDetailsWin(QWidget):
         self.ReadyForClients.emit(700,500)
 
 class clientConnectionsWin(QWidget):
+    clientJoined = Signal(object)
     def __init__(self,width,height):
         super().__init__()
         self.setWindowTitle("Cahoot!")
@@ -284,16 +285,22 @@ class clientConnectionsWin(QWidget):
         self.ConnectedClientsBox.adjustSize()
         self.layout.addWidget(self.ConnectedClientsBox,alignment=Qt.AlignHCenter)
         self.layout.addWidget(self.startBtn,alignment=Qt.AlignHCenter)
-        print("Reached this point")
-        clientDataQueue = queue.Queue()
+        self.startBtn.clicked.connect(stop_accepting.set)
+        self.clientJoined.connect(self.onClientJoin)
+        threading.Thread(target=self.acceptLoop,daemon=True).start()
+
+    def acceptLoop(self):
         while not stop_accepting.is_set():
-            threading.Thread(target=hs.acceptNewClient,args=(clientDataQueue,),daemon=True).start()
-            while clientDataQueue.empty():
-                continue
-            client = clientDataQueue.get()
-            threading.Thread(target=hc.createNewPlayer,args=(client,),daemon=True).start()
-            self.ConnectedClientsBox.setText(self.ConnectedClientsBox.text() + client[0] + "\n")
-            self.ConnectedClientsBox.adjustSize()
+            ready, _, _ = select.select([hs], [], [], 1)
+            if hs in ready:
+                client = hs.acceptNewClient()
+                self.clientJoined.emit(client)
+
+    def onClientJoin(self,client):
+        hc.createNewPlayer(client)
+        self.ConnectedClientsBox.setText(self.ConnectedClientsBox.text() + client[0] + "\n")
+        self.ConnectedClientsBox.adjustSize()
+
 
 
 
