@@ -19,7 +19,7 @@ import time
 #{1:<class "socket.socket">,s:<class "socket.socket">}
 
 #clientData:database A sqlite database, just stored in memory holds the client's Number, Nickname & Addr
-
+logging.basicConfig(level=logging.DEBUG)
 #NB createNewPlayer takes a tuple as an argument. The tuple must contain these things, in this order (The Client's Nickname, The Client's Addr, The Client's Conn)
 class HandleSockets(socket.socket):
     def __init__(self,type:socket.SocketKind=socket.AF_INET,protocol:socket.AddressFamily=socket.SOCK_STREAM,enc:str="utf-8"):
@@ -150,6 +150,7 @@ class HandlePackFile():
 def stopAcceptingClients(stop_accepting):
     input()
     stop_accepting.set()
+    ccw.close()
 
 class serverDetailsWin(QWidget):
     packfileInputted = Signal(object)
@@ -285,9 +286,10 @@ class clientConnectionsWin(QWidget):
         self.ConnectedClientsBox.adjustSize()
         self.layout.addWidget(self.ConnectedClientsBox,alignment=Qt.AlignHCenter)
         self.layout.addWidget(self.startBtn,alignment=Qt.AlignHCenter)
-        self.startBtn.clicked.connect(stop_accepting.set)
+        self.startBtn.clicked.connect(self.onStartClicked)
         self.clientJoined.connect(self.onClientJoin)
-        threading.Thread(target=self.acceptLoop,daemon=True).start()
+        acceptThread = threading.Thread(target=self.acceptLoop,daemon=True)
+        acceptThread.start()
 
     def acceptLoop(self):
         while not stop_accepting.is_set():
@@ -295,12 +297,20 @@ class clientConnectionsWin(QWidget):
             if hs in ready:
                 client = hs.acceptNewClient()
                 self.clientJoined.emit(client)
+        logging.debug("stop_accepting.set")
 
     def onClientJoin(self,client):
         hc.createNewPlayer(client)
         self.ConnectedClientsBox.setText(self.ConnectedClientsBox.text() + client[0] + "\n")
         self.ConnectedClientsBox.adjustSize()
 
+    def onStartClicked(self):
+        stop_accepting.set()
+        self.close()
+
+class QuestionWin(QWidget):
+    def __init__(self):
+        pass
 
 
 
