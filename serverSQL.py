@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, Signal
 import logging
 import sys
 import json
+import time
 
 #Stores of Data:
 #HandleSockets.playersConns:dictionary Stores each client's conn under their client number
@@ -28,6 +29,7 @@ class HandleSockets(socket.socket):
         self.HOST = self.getsockname()[0]
         self.PORT = self.getsockname()[1]
         self.listen()
+        done_sock_init.set()
 
     def returnConnectionDetails(self):
         return (self.HOST,self.PORT)
@@ -47,6 +49,11 @@ class HandleSockets(socket.socket):
         tup = ("e",place)
         conn.send(pickle.dumps(tup))
         conn.close()
+
+    def acceptNewClient(self,endQueue):
+        conn, addr = self.accept()
+        nickname = conn.recv(1024).decode(self.enc)
+        endQueue.put((nickname,addr,conn))
 
 class handleClients():
     def __init__(self,QuesNos:int):
@@ -238,13 +245,56 @@ class clientConnectionsWin(QWidget):
         super().__init__()
         self.setWindowTitle("Cahoot!")
         self.resize(width, height)
-        self.layout = QVBoxLayout()
+        self.layout = QVBoxLayout(self)
         serverDetailsFile = open("serverDetailsWinData.tmp","r")
         serverData = json.load(serverDetailsFile)
         self.packFilePath = serverData["PackFilePath"]
         self.NoQuizzes = serverData["NoQuizzes"]
         self.NoQsInChosen = serverData["NoQsInChosen"]
         self.QuizChosenNo = serverData["QuizChosen"]
+        self.layout.setSpacing(5)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        self.show()
+        ccw.displayConnDetails()
+
+    def constructServerSocket(self):
+        hs.__init__()
+
+    def displayConnDetails(self):
+        if not hasattr(hs,"HOST"):
+            hs.__init__()
+        details = hs.returnConnectionDetails()
+        self.HOST = details[0]
+        self.PORT = details[1]
+        print(f"Host: {self.HOST}, Port: {self.PORT}")
+        hostLbl = QLabel("Host: " + str(self.HOST))
+        portLbl = QLabel("Port: " + str(self.PORT))
+        hostLbl.adjustSize()
+        portLbl.adjustSize()
+        self.layout.addWidget(hostLbl,alignment=Qt.AlignHCenter)
+        self.layout.addWidget(portLbl,alignment=Qt.AlignHCenter)
+        self.displayNewClients()
+
+    def displayNewClients(self):
+        hc.__init__(self.NoQsInChosen)
+        self.startBtn = QPushButton("Start The Quiz!")
+        self.startBtn.adjustSize()
+        self.ConnectedClientsBox = QLabel("Connected Clients:\n")
+        self.ConnectedClientsBox.adjustSize()
+        self.layout.addWidget(self.ConnectedClientsBox,alignment=Qt.AlignHCenter)
+        self.layout.addWidget(self.startBtn,alignment=Qt.AlignHCenter)
+        print("Reached this point")
+        clientDataQueue = queue.Queue()
+        while not stop_accepting.is_set():
+            threading.Thread(target=hs.acceptNewClient,args=(clientDataQueue,),daemon=True).start()
+            while clientDataQueue.empty():
+                continue
+            client = clientDataQueue.get()
+            threading.Thread(target=hc.createNewPlayer,args=(client,),daemon=True).start()
+            self.ConnectedClientsBox.setText(self.ConnectedClientsBox.text() + client[0] + "\n")
+            self.ConnectedClientsBox.adjustSize()
+
 
 
 
@@ -350,6 +400,10 @@ if __name__ == "__main__":
     global hpf
     global hc
     global hs
+    global stop_accepting
+    global done_sock_init
+    stop_accepting = threading.Event()
+    done_sock_init = threading.Event()
     sdw = serverDetailsWin(700,500)
     ccw = clientConnectionsWin.__new__(clientConnectionsWin)
     hpf = HandlePackFile.__new__(HandlePackFile)
