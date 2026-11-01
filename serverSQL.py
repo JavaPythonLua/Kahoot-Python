@@ -6,7 +6,7 @@ import queue
 import select
 import threading
 import pickle
-from PySide6.QtWidgets import QApplication, QWidget, QLabel, QMainWindow, QLineEdit, QVBoxLayout, QPushButton
+from PySide6.QtWidgets import QApplication, QWidget, QLabel, QMainWindow, QLineEdit, QVBoxLayout, QPushButton, QStackedWidget
 from PySide6.QtGui import QPixmap, QFontMetrics
 from PySide6.QtCore import Qt, Signal
 import logging
@@ -247,6 +247,8 @@ class clientConnectionsWin(QWidget):
         super().__init__()
         self.setWindowTitle("Cahoot!")
         self.resize(width, height)
+        self.width = width
+        self.height = height
         self.layout = QVBoxLayout(self)
         serverDetailsFile = open("serverDetailsWinData.tmp","r")
         serverData = json.load(serverDetailsFile)
@@ -307,11 +309,79 @@ class clientConnectionsWin(QWidget):
     def onStartClicked(self):
         stop_accepting.set()
         self.close()
+        qw.__init__(self.width,self.height)
+
+class QuestionsWin(QWidget):
+    def __init__(self,questionWinWidth,questionWinHeight):
+        super().__init__()
+        self.packfilePath = None
+        self.setWindowTitle("Cahoot!")
+        self.resize(questionWinWidth, questionWinHeight)
+        self.layout = QVBoxLayout(self)
+        self.layout.setSpacing(5)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        self.stack = QStackedWidget()
+        self.QuestionWin = QuestionWin(questionWinWidth,questionWinHeight)
+        self.ResultsWin = ResultsWin(questionWinWidth,questionWinHeight)
+        self.stack.addWidget(self.QuestionWin)
+        self.stack.addWidget(self.ResultsWin)
+        self.show()
 
 class QuestionWin(QWidget):
-    def __init__(self):
-        pass
+    def __init__(self,questionWinWidth:int,questionWinHeight:int):
+        super().__init__()
+        self.setWindowTitle("Cahoot!")
+        self.resize(questionWinWidth, questionWinHeight)
+        self.layout = QVBoxLayout(self)
+        self.layout.setSpacing(5)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        self.questionBox = QLabel("")
+        self.AnswerABox = QLabel("")
+        self.AnswerBBox = QLabel("")
+        self.AnswerCBox = QLabel("")
+        self.questionBox.adjustSize()
+        self.AnswerABox.adjustSize()
+        self.AnswerBBox.adjustSize()
+        self.AnswerCBox.adjustSize()
+        self.layout.addWidget(self.questionBox)
+        self.layout.addWidget(self.AnswerABox)
+        self.layout.addWidget(self.AnswerBBox)
+        self.layout.addWidget(self.AnswerCBox)
 
+    def addQuestionAndAnswers(self,questionTitle:str,questionAnswers:list):
+        self.questionBox = QLabel(questionTitle)
+        self.AnswerABox = QLabel(str(questionAnswers[0]))
+        self.AnswerBBox = QLabel(str(questionAnswers[1]))
+        self.AnswerCBox = QLabel(str(questionAnswers[2]))
+        self.questionBox.adjustSize()
+        self.AnswerABox.adjustSize()
+        self.AnswerBBox.adjustSize()
+        self.AnswerCBox.adjustSize()
+
+class ResultsWin(QWidget):
+    def __init__(self,questionWinWidth:int,questionWinHeight:int):
+        super().__init__()
+        self.setWindowTitle("Cahoot!")
+        self.resize(questionWinWidth, questionWinHeight)
+        self.layout = QVBoxLayout(self)
+        self.layout.setSpacing(5)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        self.questionBox = QLabel("")
+        self.correctPeopleBox = QLabel("")
+        self.questionBox.adjustSize()
+        self.correctPeopleBox.adjustSize()
+        self.layout.addWidget(self.questionBox)
+        self.layout.addWidget(self.correctPeopleBox)
+
+    def addQuestionAndResults(self,questionTitle:str,correctPeople:list):
+        self.questionBox = QLabel(questionTitle)
+        correctPeopleStr = '\n'.join(correctPeople)
+        self.correctPeopleBox = QLabel(correctPeopleStr)
+        self.questionBox.adjustSize()
+        self.correctPeopleBox.adjustSize()
 
 
 
@@ -417,6 +487,7 @@ if __name__ == "__main__":
     global hpf
     global hc
     global hs
+    global qw
     global stop_accepting
     global done_sock_init
     stop_accepting = threading.Event()
@@ -426,6 +497,7 @@ if __name__ == "__main__":
     hpf = HandlePackFile.__new__(HandlePackFile)
     hc = handleClients.__new__(handleClients)
     hs = HandleSockets.__new__(HandleSockets)
+    qw = QuestionsWin.__new__(QuestionsWin)
     sdw.addPackfileFields()
     sdw.addNextStepBtn(packfile_queue)
     sdw.packfileInputted.connect(handlePackFileData)
